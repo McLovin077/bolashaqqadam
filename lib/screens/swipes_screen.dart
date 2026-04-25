@@ -3,13 +3,14 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_card_swiper/flutter_card_swiper.dart';
+import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../models/question_model.dart';
 import '../providers/lift_provider.dart';
+import '../widgets/animated_background.dart';
 import '../widgets/glass_panel.dart';
-import '../widgets/lift_backdrop.dart';
 import 'analytics_screen.dart';
 
 class SwipeScreen extends StatefulWidget {
@@ -37,10 +38,7 @@ class _SwipeScreenState extends State<SwipeScreen> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: LiftBackdrop(
-        primaryGlow: const Color(0xFF34D1BF),
-        secondaryGlow: const Color(0xFF4C8DFF),
-        tertiaryGlow: const Color(0xFFFF7AC6),
+      body: AnimatedBackground(
         child: SafeArea(
           child: Stack(
             children: [
@@ -151,6 +149,8 @@ class _SwipeScreenState extends State<SwipeScreen> {
       return false;
     }
 
+    HapticFeedback.lightImpact();
+
     final choice = direction == CardSwiperDirection.left
         ? QuestionChoice.optionA
         : QuestionChoice.optionB;
@@ -158,6 +158,7 @@ class _SwipeScreenState extends State<SwipeScreen> {
     provider.answerCurrentQuestion(choice);
 
     if (provider.isAssessmentCompleted) {
+      HapticFeedback.heavyImpact();
       unawaited(_runAnalysisFlow());
     }
 
@@ -335,7 +336,7 @@ class _SwipeQuestionCard extends StatelessWidget {
     return GlassPanel(
       radius: 34,
       blur: 30,
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
+      padding: const EdgeInsets.all(24),
       gradient: LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
@@ -408,14 +409,12 @@ class _SwipeQuestionCard extends StatelessWidget {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
-                          question.questionText,
+                        _AdaptiveQuestionText(
+                          text: question.questionText,
                           style: theme.textTheme.headlineMedium?.copyWith(
-                            fontSize: 32,
-                            height: 1.18,
                             fontWeight: FontWeight.w700,
+                            height: 1.2,
                           ),
-                          textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 18),
                         Row(
@@ -458,6 +457,50 @@ class _SwipeQuestionCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _AdaptiveQuestionText extends StatelessWidget {
+  const _AdaptiveQuestionText({required this.text, this.style});
+
+  final String text;
+  final TextStyle? style;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final resolvedStyle =
+            style ?? Theme.of(context).textTheme.headlineMedium;
+        double fontSize = 24;
+
+        while (fontSize >= 14) {
+          final painter = TextPainter(
+            text: TextSpan(
+              text: text,
+              style: resolvedStyle?.copyWith(fontSize: fontSize),
+            ),
+            textAlign: TextAlign.center,
+            textDirection: TextDirection.ltr,
+            maxLines: 5,
+          )..layout(maxWidth: constraints.maxWidth);
+
+          if (!painter.didExceedMaxLines) {
+            break;
+          }
+
+          fontSize -= 1;
+        }
+
+        return Text(
+          text,
+          textAlign: TextAlign.center,
+          maxLines: 5,
+          overflow: TextOverflow.ellipsis,
+          style: resolvedStyle?.copyWith(fontSize: fontSize.clamp(14, 24)),
+        );
+      },
     );
   }
 }
