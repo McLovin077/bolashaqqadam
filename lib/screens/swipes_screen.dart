@@ -330,6 +330,7 @@ class _SwipeQuestionCard extends StatelessWidget {
         .clamp(0.0, 1.0)
         .toDouble();
     final isRightBias = horizontalOffsetPercentage > 0;
+    final theme = Theme.of(context);
 
     return GlassPanel(
       radius: 34,
@@ -386,9 +387,9 @@ class _SwipeQuestionCard extends StatelessWidget {
                     ),
                     child: Text(
                       '$questionNumber / $totalQuestions',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: Colors.white70,
+                      ),
                     ),
                   ),
                   const Spacer(),
@@ -399,45 +400,59 @@ class _SwipeQuestionCard extends StatelessWidget {
                   ),
                 ],
               ),
-              const Spacer(),
-              Text(
-                question.questionText,
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontSize: 32,
-                  height: 1.18,
-                  fontWeight: FontWeight.w700,
+              const SizedBox(height: 16),
+              Expanded(
+                child: Center(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          question.questionText,
+                          style: theme.textTheme.headlineMedium?.copyWith(
+                            fontSize: 32,
+                            height: 1.18,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 18),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: _AnswerPreview(
+                                accentColor: const Color(0xFFFFB457),
+                                label: 'A',
+                                text: question.optionA_Text,
+                                alignment: CrossAxisAlignment.start,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _AnswerPreview(
+                                accentColor: const Color(0xFF34D1BF),
+                                label: 'B',
+                                text: question.optionB_Text,
+                                alignment: CrossAxisAlignment.end,
+                                textAlign: TextAlign.right,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-                textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 18),
-              Row(
-                children: [
-                  Expanded(
-                    child: _AnswerPreview(
-                      accentColor: const Color(0xFFFFB457),
-                      label: 'A',
-                      text: question.optionA_Text,
-                      alignment: CrossAxisAlignment.start,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _AnswerPreview(
-                      accentColor: const Color(0xFF34D1BF),
-                      label: 'B',
-                      text: question.optionB_Text,
-                      alignment: CrossAxisAlignment.end,
-                      textAlign: TextAlign.right,
-                    ),
-                  ),
-                ],
-              ),
-              const Spacer(),
+              const SizedBox(height: 12),
               Text(
                 'Свайпай карточку или используй кнопки ниже.',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(color: Colors.white54),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: Colors.white54,
+                ),
+                textAlign: TextAlign.center,
               ),
             ],
           ),
