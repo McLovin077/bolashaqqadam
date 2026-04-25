@@ -45,18 +45,19 @@ class _SwipeScreenState extends State<SwipeScreen> {
           child: Stack(
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 18, 20, 120),
+                padding: const EdgeInsets.fromLTRB(18, 14, 18, 112),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const _SwipeHeader(),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 14),
                     _ProgressPanel(
                       currentStep: liftProvider.currentQuestionIndex,
                       totalSteps: liftProvider.totalQuestions,
                     ),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 14),
                     Expanded(
+                      flex: 7,
                       child: AnimatedSwitcher(
                         duration: const Duration(milliseconds: 260),
                         switchInCurve: Curves.easeOutCubic,
@@ -85,7 +86,7 @@ class _SwipeScreenState extends State<SwipeScreen> {
                                 padding: EdgeInsets.zero,
                                 scale: 0.92,
                                 maxAngle: 18,
-                                backCardOffset: const Offset(0, 26),
+                                backCardOffset: const Offset(0, 22),
                                 duration: const Duration(milliseconds: 240),
                                 allowedSwipeDirection:
                                     const AllowedSwipeDirection.only(
@@ -118,7 +119,7 @@ class _SwipeScreenState extends State<SwipeScreen> {
                               ),
                       ),
                     ),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 12),
                     if (!isCompleted)
                       _SwipeActions(
                         question: liftProvider.currentQuestion!,
@@ -207,7 +208,7 @@ class _SwipeHeader extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         GlassPanel(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
           radius: 20,
           color: const Color(0xFF101827).withValues(alpha: 0.68),
           child: const Row(
@@ -229,12 +230,12 @@ class _SwipeHeader extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         Text(
           'LIFT читает твой стиль мышления через серию быстрых решений.',
           style: Theme.of(context).textTheme.headlineMedium,
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
         Text(
           'Выбирай instinctively: влево для варианта A, вправо для варианта B.',
           style: Theme.of(
@@ -277,7 +278,7 @@ class _ProgressPanel extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           ClipRRect(
             borderRadius: BorderRadius.circular(999),
             child: Stack(
@@ -333,7 +334,7 @@ class _SwipeQuestionCard extends StatelessWidget {
     return GlassPanel(
       radius: 34,
       blur: 30,
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
       gradient: LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
@@ -370,7 +371,7 @@ class _SwipeQuestionCard extends StatelessWidget {
             ),
           ),
           Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Row(
                 children: [
@@ -401,24 +402,35 @@ class _SwipeQuestionCard extends StatelessWidget {
               const Spacer(),
               Text(
                 question.questionText,
-                style: Theme.of(
-                  context,
-                ).textTheme.headlineMedium?.copyWith(fontSize: 28, height: 1.2),
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  fontSize: 32,
+                  height: 1.18,
+                  fontWeight: FontWeight.w700,
+                ),
+                textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 24),
-              _AnswerPreview(
-                accentColor: const Color(0xFFFFB457),
-                label: 'Вариант A',
-                text: question.optionA_Text,
-                alignment: CrossAxisAlignment.start,
-              ),
-              const SizedBox(height: 14),
-              _AnswerPreview(
-                accentColor: const Color(0xFF34D1BF),
-                label: 'Вариант B',
-                text: question.optionB_Text,
-                alignment: CrossAxisAlignment.end,
-                textAlign: TextAlign.right,
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Expanded(
+                    child: _AnswerPreview(
+                      accentColor: const Color(0xFFFFB457),
+                      label: 'A',
+                      text: question.optionA_Text,
+                      alignment: CrossAxisAlignment.start,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _AnswerPreview(
+                      accentColor: const Color(0xFF34D1BF),
+                      label: 'B',
+                      text: question.optionB_Text,
+                      alignment: CrossAxisAlignment.end,
+                      textAlign: TextAlign.right,
+                    ),
+                  ),
+                ],
               ),
               const Spacer(),
               Text(
@@ -507,7 +519,7 @@ class _AnswerPreview extends StatelessWidget {
           textAlign: textAlign,
           style: Theme.of(
             context,
-          ).textTheme.bodyLarge?.copyWith(color: Colors.white, height: 1.5),
+          ).textTheme.bodyMedium?.copyWith(color: Colors.white, height: 1.45),
         ),
       ],
     );
@@ -578,35 +590,41 @@ class _ActionChoiceButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return GlassPanel(
       padding: EdgeInsets.zero,
-      radius: 24,
+      radius: 20,
       color: accentColor.withValues(alpha: 0.08),
       borderColor: accentColor.withValues(alpha: 0.22),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: isLocked ? null : onPressed,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(20),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(icon, color: accentColor, size: 18),
-                const SizedBox(height: 10),
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+                Row(
+                  children: [
+                    Icon(icon, color: accentColor, size: 16),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 6),
                 Text(
                   subtitle,
-                  maxLines: 2,
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.white70,
+                    fontSize: 12,
+                  ),
                 ),
               ],
             ),

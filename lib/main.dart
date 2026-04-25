@@ -46,6 +46,20 @@ class LiftApp extends StatelessWidget {
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'liftup',
+        builder: (context, child) {
+          return ColoredBox(
+            color: const Color(0xFF02040B),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 450),
+                child: DecoratedBox(
+                  decoration: const BoxDecoration(color: backgroundColor),
+                  child: child ?? const SizedBox.shrink(),
+                ),
+              ),
+            ),
+          );
+        },
         theme: ThemeData(
           useMaterial3: true,
           brightness: Brightness.dark,
