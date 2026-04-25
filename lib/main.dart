@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'providers/certificate_provider.dart';
 import 'providers/navigation_provider.dart';
 import 'providers/quiz_provider.dart';
 import 'screens/main_screen.dart';
@@ -27,10 +28,11 @@ class LiftApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => NavigationProvider()),
         ChangeNotifierProvider(create: (_) => QuizProvider()),
+        ChangeNotifierProvider(create: (_) => CertificateProvider()),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
-        title: 'LIFT',
+        title: 'LiftUp',
         theme: ThemeData(
           useMaterial3: true,
           brightness: Brightness.dark,

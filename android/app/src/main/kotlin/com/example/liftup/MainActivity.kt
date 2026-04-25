@@ -1,4 +1,4 @@
-package com.example.bolashaqqadam
+package com.example.liftup
 
 import io.flutter.embedding.android.FlutterActivity
 
