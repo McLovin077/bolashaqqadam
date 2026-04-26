@@ -109,6 +109,11 @@ class AnalyticsScreen extends StatelessWidget {
         percentage: percentage,
         gapAxis: _lowestRelevantAxis(scores, template.axisWeights),
         strongestAxis: _strongestRelevantAxis(scores, template.axisWeights),
+        aiDescription: _buildCareerHint(
+          title: template.title,
+          percentage: percentage,
+          gapAxis: _lowestRelevantAxis(scores, template.axisWeights),
+        ),
       );
     }).toList()..sort((a, b) => b.percentage.compareTo(a.percentage));
 
@@ -217,6 +222,33 @@ class AnalyticsScreen extends StatelessWidget {
     }
 
     return 'Используй Реестр и Jasa, чтобы закрыть недостающий навык через сертификаты и практический опыт.';
+  }
+
+  String _buildCareerHint({
+    required String title,
+    required int percentage,
+    required String gapAxis,
+  }) {
+    final gapPercent = (99 - percentage).clamp(6, 16);
+    return 'Твой профиль $title: тебе нужно усилить параметр '
+        '"${_friendlyAxisName(gapAxis)}" на $gapPercent%, чтобы попасть в ТОП.';
+  }
+
+  String _friendlyAxisName(String axis) {
+    switch (axis) {
+      case LiftAxes.communication:
+        return 'Лидерство';
+      case LiftAxes.logic:
+        return 'Аналитика';
+      case LiftAxes.creativity:
+        return 'Творчество';
+      case LiftAxes.organization:
+        return 'Системность';
+      case LiftAxes.technical:
+        return 'Техничность';
+    }
+
+    return axis;
   }
 }
 
@@ -388,10 +420,12 @@ class _RadarPanel extends StatelessWidget {
                     entryRadius: 3.8,
                   ),
                 ],
-                titleTextStyle: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.white70,
-                  fontWeight: FontWeight.w600,
-                ),
+                titleTextStyle: Theme.of(context).textTheme.bodyMedium
+                    ?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                    ),
                 getTitle: (index, angle) {
                   return RadarChartTitle(
                     text: LiftAxes.all[index],
@@ -410,7 +444,7 @@ class _RadarPanel extends StatelessWidget {
                   color: Colors.white.withValues(alpha: 0.10),
                 ),
                 radarBackgroundColor: Colors.transparent,
-                titlePositionPercentageOffset: 0.16,
+                titlePositionPercentageOffset: 0.19,
                 borderData: FlBorderData(show: false),
               ),
             ),
@@ -445,9 +479,10 @@ class _AxisMeter extends StatelessWidget {
             Expanded(
               child: Text(
                 axis,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
             Text(
@@ -586,6 +621,15 @@ class _CareerMatchCard extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            match.aiDescription,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Colors.white70,
+              height: 1.45,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(height: 14),
           ClipRRect(
@@ -747,6 +791,7 @@ class _CareerMatch {
     required this.percentage,
     required this.gapAxis,
     required this.strongestAxis,
+    required this.aiDescription,
   });
 
   final String title;
@@ -754,6 +799,7 @@ class _CareerMatch {
   final int percentage;
   final String gapAxis;
   final String strongestAxis;
+  final String aiDescription;
 }
 
 class _TrajectoryPlan {

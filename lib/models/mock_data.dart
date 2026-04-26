@@ -1,3 +1,5 @@
+import 'lift_taxonomy.dart';
+
 class JobOffer {
   const JobOffer({
     required this.id,
@@ -60,6 +62,26 @@ class InterviewQuestion {
   final String questionText;
   final String optionA;
   final String optionB;
+}
+
+class DailyQuizQuestion {
+  const DailyQuizQuestion({
+    required this.questionText,
+    required this.optionA,
+    required this.optionB,
+    required this.optionAAxisBoosts,
+    required this.optionBAxisBoosts,
+  });
+
+  final String questionText;
+  final String optionA;
+  final String optionB;
+  final Map<String, double> optionAAxisBoosts;
+  final Map<String, double> optionBAxisBoosts;
+
+  Map<String, double> boostsFor(int answerIndex) {
+    return answerIndex == 0 ? optionAAxisBoosts : optionBAxisBoosts;
+  }
 }
 
 const List<JobOffer> mockJobs = [
@@ -154,5 +176,38 @@ const List<InterviewQuestion> mockQuestions = [
     optionA: 'Проведу быструю фасилитацию и соберу общее решение за 15 минут',
     optionB:
         'Разделю спор на факты и риски, а потом приму ответственное решение',
+  ),
+];
+
+const List<DailyQuizQuestion> dailyQuizQuestions = [
+  DailyQuizQuestion(
+    questionText:
+        'Ситуация: дедлайн завтра, но критический баг все еще не исправлен. Что выберешь?',
+    optionA: 'Запустить как есть и фиксить на ходу, чтобы не сорвать релиз',
+    optionB:
+        'Честно сказать команде о рисках и попросить перенос с объяснением',
+    optionAAxisBoosts: {LiftAxes.technical: 1.0, LiftAxes.organization: 0.7},
+    optionBAxisBoosts: {LiftAxes.communication: 0.9, LiftAxes.logic: 1.0},
+  ),
+  DailyQuizQuestion(
+    questionText:
+        'Во время школьного проекта два участника спорят, и команда теряет темп. Как действуешь?',
+    optionA: 'Проведу быструю фасилитацию и верну фокус команды на общую цель',
+    optionB:
+        'Разложу конфликт по фактам и соберу четкий план действий по шагам',
+    optionAAxisBoosts: {
+      LiftAxes.communication: 1.1,
+      LiftAxes.organization: 0.6,
+    },
+    optionBAxisBoosts: {LiftAxes.logic: 1.0, LiftAxes.organization: 0.8},
+  ),
+  DailyQuizQuestion(
+    questionText:
+        'Тебе нужно защитить идею перед партнером. Что подготовишь в первую очередь?',
+    optionA:
+        'Эмоциональный сторителлинг и сильную подачу, чтобы заразить идеей',
+    optionB: 'Цифры, аргументы и риски, чтобы убедить через логику и факты',
+    optionAAxisBoosts: {LiftAxes.creativity: 1.0, LiftAxes.communication: 0.9},
+    optionBAxisBoosts: {LiftAxes.logic: 1.1, LiftAxes.technical: 0.6},
   ),
 ];

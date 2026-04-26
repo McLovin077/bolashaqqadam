@@ -4,6 +4,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../models/models.dart';
+import '../models/mock_data.dart';
 import '../providers/app_provider.dart';
 import '../providers/lift_provider.dart';
 import '../widgets/animated_background.dart';
@@ -17,7 +18,10 @@ class ProfileScreen extends StatelessWidget {
     final appProvider = context.watch<AppProvider>();
     final liftProvider = context.watch<LiftProvider>();
     final hasAiProfile = liftProvider.hasAnalysisResult;
-    final aiProfile = hasAiProfile ? liftProvider.analyticsProfile : null;
+    final baseProfile = hasAiProfile ? liftProvider.analyticsProfile : null;
+    final mergedScores = hasAiProfile && baseProfile != null
+        ? appProvider.composeLiftRadar(baseProfile.radarScores)
+        : {for (final axis in LiftAxes.all) axis: 0.0};
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -46,44 +50,45 @@ class ProfileScreen extends StatelessWidget {
               child: AnimatedBackground(child: SizedBox.expand()),
             ),
           ),
-          Positioned.fill(
-            child: SafeArea(
-              top: false,
-              child: ListView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(18, 10, 18, 114),
-                children: [
-                  _ProfileHeroCard(
-                    userName: appProvider.userName,
-                    archetype: hasAiProfile
-                        ? liftProvider.archetype
-                        : 'AI-профиль еще не собран',
-                    suggestedCareer: hasAiProfile
-                        ? liftProvider.suggestedCareerTitle
-                        : 'Пройди AI-аналитику, чтобы открыть карьерный вектор',
-                    level: appProvider.overallLiftLevel,
-                    hrValue: appProvider.overallHrValue,
-                    achievementsCount: appProvider.savedAchievements.length,
-                    hasAiProfile: hasAiProfile,
-                  ),
-                  const SizedBox(height: 16),
-                  _AnalyticsCard(
-                    profile: aiProfile,
-                    hasAiProfile: hasAiProfile,
-                    suggestedCareer: hasAiProfile
-                        ? liftProvider.suggestedCareerTitle
-                        : null,
-                  ),
-                  const SizedBox(height: 16),
-                  _DailyQuizCard(
-                    canClaim: appProvider.canClaimDailyQuizBoost,
-                    reward: appProvider.dailyQuizReward,
-                    onPressed: () => _handleDailyQuiz(context),
-                  ),
-                  const SizedBox(height: 16),
-                  _RegistrySection(achievements: appProvider.savedAchievements),
-                ],
-              ),
+          SafeArea(
+            top: false,
+            child: ListView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(18, 10, 18, 114),
+              children: [
+                _ProfileHeroCard(
+                  userName: appProvider.userName,
+                  archetype: hasAiProfile
+                      ? liftProvider.archetype
+                      : 'AI-профиль еще не собран',
+                  suggestedCareer: hasAiProfile
+                      ? liftProvider.suggestedCareerTitle
+                      : 'Пройди AI-аналитику, чтобы открыть карьерный вектор',
+                  hasAiProfile: hasAiProfile,
+                  hrValue: appProvider.overallHrValue,
+                  achievementsCount: appProvider.savedAchievements.length,
+                  currentLevel: appProvider.currentLevel,
+                  currentXP: appProvider.currentXP,
+                  xpToNextLevel: appProvider.xpToNextLevel,
+                  xpNeededForNextLevel: appProvider.xpNeededForNextLevel,
+                ),
+                const SizedBox(height: 16),
+                _AnalyticsCard(
+                  profile: baseProfile,
+                  hasAiProfile: hasAiProfile,
+                  mergedScores: mergedScores,
+                ),
+                const SizedBox(height: 16),
+                _DailyQuizCard(
+                  canClaim: appProvider.canClaimDailyQuizBoost,
+                  hasActiveSession: appProvider.hasActiveDailyQuizSession,
+                  isFinished: appProvider.isDailyQuizFinished,
+                  rewardXp: appProvider.dailyQuizXpReward,
+                  onPressed: () => _openDailyQuiz(context),
+                ),
+                const SizedBox(height: 16),
+                _RegistrySection(achievements: appProvider.savedAchievements),
+              ],
             ),
           ),
         ],
@@ -91,22 +96,32 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  void _handleDailyQuiz(BuildContext context) {
+  Future<void> _openDailyQuiz(BuildContext context) async {
     final appProvider = context.read<AppProvider>();
-    final applied = appProvider.completeDailyQuizBoost();
-    final axis = appProvider.lastDailyQuizBoostAxis ?? 'навыку';
 
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(
-            applied
-                ? 'Ежедневный AI-квиз завершен: +${appProvider.dailyQuizReward} к оси "$axis".'
-                : 'Ежедневный AI-квиз уже пройден сегодня. Возвращайся завтра.',
+    if (!appProvider.canClaimDailyQuizBoost &&
+        !appProvider.hasActiveDailyQuizSession) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Ежедневный AI-квиз уже пройден. Возвращайся завтра.',
+            ),
           ),
-        ),
-      );
+        );
+      return;
+    }
+
+    appProvider.startDailyQuizSession();
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.45),
+      builder: (_) => const _DailyQuizSheet(),
+    );
   }
 }
 
@@ -115,23 +130,31 @@ class _ProfileHeroCard extends StatelessWidget {
     required this.userName,
     required this.archetype,
     required this.suggestedCareer,
-    required this.level,
+    required this.hasAiProfile,
     required this.hrValue,
     required this.achievementsCount,
-    required this.hasAiProfile,
+    required this.currentLevel,
+    required this.currentXP,
+    required this.xpToNextLevel,
+    required this.xpNeededForNextLevel,
   });
 
   final String userName;
   final String archetype;
   final String suggestedCareer;
-  final int level;
+  final bool hasAiProfile;
   final double hrValue;
   final int achievementsCount;
-  final bool hasAiProfile;
+  final int currentLevel;
+  final int currentXP;
+  final int xpToNextLevel;
+  final int xpNeededForNextLevel;
 
   @override
   Widget build(BuildContext context) {
-    final progress = ((hrValue % 10) / 10).clamp(0.12, 1.0);
+    final progress = xpToNextLevel == 0
+        ? 0.0
+        : (currentXP / xpToNextLevel).clamp(0.0, 1.0).toDouble();
 
     return GlassPanel(
       radius: 34,
@@ -191,38 +214,6 @@ class _ProfileHeroCard extends StatelessWidget {
                   ],
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF34D1BF).withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: const Color(0xFF34D1BF).withValues(alpha: 0.24),
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      'LVL',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.white70,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '$level',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: const Color(0xFF66F0D7),
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
             ],
           ),
           const SizedBox(height: 18),
@@ -250,137 +241,42 @@ class _ProfileHeroCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 20),
           Text(
-            'Общий уровень LIFT',
+            'Твой LIFT Rank: $currentLevel Уровень',
             style: Theme.of(
               context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 10),
           ClipRRect(
             borderRadius: BorderRadius.circular(999),
-            child: Stack(
-              children: [
-                Container(
-                  height: 12,
-                  color: Colors.white.withValues(alpha: 0.05),
-                ),
-                FractionallySizedBox(
-                  widthFactor: progress,
-                  child: Container(
-                    height: 12,
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Color(0xFF34D1BF),
-                          Color(0xFF59A8FF),
-                          Color(0xFF9D68FF),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+            child: ShaderMask(
+              shaderCallback: (bounds) {
+                return const LinearGradient(
+                  colors: [
+                    Color(0xFF34D1BF),
+                    Color(0xFF59A8FF),
+                    Color(0xFFAF5CFF),
+                  ],
+                ).createShader(bounds);
+              },
+              blendMode: BlendMode.srcATop,
+              child: LinearProgressIndicator(
+                minHeight: 12,
+                value: progress,
+                backgroundColor: Colors.white.withValues(alpha: 0.06),
+                valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AvatarBadge extends StatelessWidget {
-  const _AvatarBadge({required this.userName});
-
-  final String userName;
-
-  @override
-  Widget build(BuildContext context) {
-    final parts = userName.trim().split(' ').where((part) => part.isNotEmpty);
-    final initials = parts.take(2).map((part) => part[0]).join();
-
-    return Container(
-      width: 74,
-      height: 74,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: const LinearGradient(
-          colors: [Color(0xFF59A8FF), Color(0xFF34D1BF)],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF59A8FF).withValues(alpha: 0.22),
-            blurRadius: 24,
-            offset: const Offset(0, 14),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.all(2),
-      child: Container(
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: const Color(0xFF08111E),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          initials.isEmpty ? 'U' : initials,
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.w900,
-            letterSpacing: 1.1,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _InfoBadge extends StatelessWidget {
-  const _InfoBadge({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 17, color: color),
-          const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                label,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.white60,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              Text(
-                value,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
-                ),
-              ),
-            ],
+          const SizedBox(height: 10),
+          Text(
+            '$currentXP / $xpToNextLevel XP. Тебе нужно еще $xpNeededForNextLevel XP, чтобы получить новый уровень.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Colors.white60,
+              height: 1.4,
+            ),
           ),
         ],
       ),
@@ -392,20 +288,17 @@ class _AnalyticsCard extends StatelessWidget {
   const _AnalyticsCard({
     required this.profile,
     required this.hasAiProfile,
-    required this.suggestedCareer,
+    required this.mergedScores,
   });
 
   final AnalyticsProfileModel? profile;
   final bool hasAiProfile;
-  final String? suggestedCareer;
+  final Map<String, double> mergedScores;
 
   @override
   Widget build(BuildContext context) {
-    final scores = hasAiProfile && profile != null
-        ? profile!.radarScores
-        : {for (final axis in LiftAxes.all) axis: 0.0};
     final entries = LiftAxes.all
-        .map((axis) => RadarEntry(value: scores[axis] ?? 0))
+        .map((axis) => RadarEntry(value: mergedScores[axis] ?? 0))
         .toList();
 
     return GlassPanel(
@@ -437,27 +330,11 @@ class _AnalyticsCard extends StatelessWidget {
           Text(
             hasAiProfile && profile != null
                 ? profile!.aiVerdict
-                : 'Сначала заверши AI-аналитику в свайпах. После этого радар заполнится, а LIFT покажет примерную профессию по твоему профилю.',
+                : 'Сначала заверши AI-аналитику в свайпах. После этого радар откроется и начнет усиливаться достижениями и ежедневным AI-квизом.',
             style: Theme.of(
               context,
             ).textTheme.bodyLarge?.copyWith(color: Colors.white70, height: 1.5),
           ),
-          const SizedBox(height: 14),
-          if (hasAiProfile && suggestedCareer != null)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: const Color(0xFF34D1BF).withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(
-                'AI Career Match: $suggestedCareer',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: const Color(0xFF66F0D7),
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
           const SizedBox(height: 16),
           Stack(
             alignment: Alignment.center,
@@ -479,15 +356,15 @@ class _AnalyticsCard extends StatelessWidget {
                       color: Colors.white.withValues(alpha: 0.10),
                     ),
                     radarBackgroundColor: Colors.transparent,
-                    titlePositionPercentageOffset: 0.18,
-                    titleTextStyle: Theme.of(context).textTheme.bodySmall
+                    titlePositionPercentageOffset: 0.16,
+                    titleTextStyle: Theme.of(context).textTheme.bodyMedium
                         ?.copyWith(
-                          color: Colors.white70,
-                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
                         ),
                     getTitle: (index, angle) {
                       return RadarChartTitle(
-                        text: LiftAxes.all[index],
+                        text: _friendlyAxisName(LiftAxes.all[index]),
                         angle: angle,
                       );
                     },
@@ -495,7 +372,7 @@ class _AnalyticsCard extends StatelessWidget {
                       RadarDataSet(
                         dataEntries: entries,
                         fillColor: hasAiProfile
-                            ? const Color(0xFF59A8FF).withValues(alpha: 0.18)
+                            ? const Color(0xFF59A8FF).withValues(alpha: 0.20)
                             : Colors.transparent,
                         borderColor: hasAiProfile
                             ? const Color(0xFF59A8FF)
@@ -541,7 +418,7 @@ class _AnalyticsCard extends StatelessWidget {
             ],
           ),
           if (hasAiProfile && profile != null) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             Wrap(
               spacing: 10,
               runSpacing: 10,
@@ -567,21 +444,46 @@ class _AnalyticsCard extends StatelessWidget {
       ),
     );
   }
+
+  String _friendlyAxisName(String axis) {
+    switch (axis) {
+      case LiftAxes.communication:
+        return 'Лидерство';
+      case LiftAxes.logic:
+        return 'Аналитика';
+      case LiftAxes.creativity:
+        return 'Творчество';
+      case LiftAxes.organization:
+        return 'Системность';
+      case LiftAxes.technical:
+        return 'Техничность';
+    }
+    return axis;
+  }
 }
 
 class _DailyQuizCard extends StatelessWidget {
   const _DailyQuizCard({
     required this.canClaim,
-    required this.reward,
+    required this.hasActiveSession,
+    required this.isFinished,
+    required this.rewardXp,
     required this.onPressed,
   });
 
   final bool canClaim;
-  final int reward;
+  final bool hasActiveSession;
+  final bool isFinished;
+  final int rewardXp;
   final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
+    final isEnabled = canClaim || hasActiveSession;
+    final buttonLabel = hasActiveSession
+        ? 'Продолжить AI-квиз'
+        : 'Пройти ежедневный AI-квиз (+$rewardXp XP)';
+
     return GlassPanel(
       radius: 28,
       gradient: LinearGradient(
@@ -592,109 +494,380 @@ class _DailyQuizCard extends StatelessWidget {
           const Color(0xFF0C1121).withValues(alpha: 0.84),
         ],
       ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final button = _DailyQuizButton(
-            canClaim: canClaim,
-            onPressed: onPressed,
-          );
-          final info = _DailyQuizInfo(canClaim: canClaim, reward: reward);
-
-          if (constraints.maxWidth < 360) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                info,
-                const SizedBox(height: 14),
-                SizedBox(width: double.infinity, child: button),
-              ],
-            );
-          }
-
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Expanded(child: info),
-              const SizedBox(width: 12),
-              button,
-            ],
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _DailyQuizInfo extends StatelessWidget {
-  const _DailyQuizInfo({required this.canClaim, required this.reward});
-
-  final bool canClaim;
-  final int reward;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 54,
-          height: 54,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            color: const Color(0xFF9D68FF).withValues(alpha: 0.16),
-          ),
-          alignment: Alignment.center,
-          child: const Icon(LucideIcons.swords, color: Color(0xFFCEB2FF)),
-        ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Ежедневный AI-квиз',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+              Container(
+                width: 54,
+                height: 54,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(18),
+                  color: const Color(0xFF9D68FF).withValues(alpha: 0.16),
+                ),
+                alignment: Alignment.center,
+                child: const Icon(LucideIcons.swords, color: Color(0xFFCEB2FF)),
               ),
-              const SizedBox(height: 4),
-              Text(
-                canClaim
-                    ? 'Пройди квиз и получи +$reward к самой слабой оси профиля.'
-                    : 'Сегодня бонус уже получен. Завтра откроется новый буст.',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.white70,
-                  height: 1.45,
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Ежедневный AI-квиз',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      canClaim
+                          ? '3 коротких AI-вопроса, +30 XP к рангу и буст навыков в профиле.'
+                          : 'Сегодня бонус уже забран. Новый AI-квиз откроется завтра.',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Colors.white70,
+                        height: 1.45,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-        ),
-      ],
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: isEnabled ? onPressed : null,
+              icon: Icon(
+                isFinished && !canClaim
+                    ? LucideIcons.checkCircle2
+                    : LucideIcons.sparkles,
+              ),
+              label: Text(isEnabled ? buttonLabel : 'Квиз уже пройден'),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
-class _DailyQuizButton extends StatelessWidget {
-  const _DailyQuizButton({required this.canClaim, required this.onPressed});
-
-  final bool canClaim;
-  final VoidCallback onPressed;
+class _DailyQuizSheet extends StatelessWidget {
+  const _DailyQuizSheet();
 
   @override
   Widget build(BuildContext context) {
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        minimumSize: const Size(132, 52),
-        backgroundColor: canClaim
-            ? const Color(0xFF34D1BF)
-            : Colors.white.withValues(alpha: 0.10),
-        foregroundColor: canClaim ? const Color(0xFF04111A) : Colors.white54,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    final maxHeight = MediaQuery.sizeOf(context).height * 0.92;
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(12, 24, 12, bottomInset + 16),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: maxHeight),
+        child: GlassPanel(
+          radius: 34,
+          blur: 30,
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              const Color(0xFF121E39).withValues(alpha: 0.96),
+              const Color(0xFF0A1020).withValues(alpha: 0.90),
+            ],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF59A8FF).withValues(alpha: 0.14),
+              blurRadius: 32,
+              offset: const Offset(0, 20),
+            ),
+          ],
+          child: SafeArea(
+            top: false,
+            child: Consumer<AppProvider>(
+              builder: (context, appProvider, child) {
+                final question = appProvider.currentDailyQuizQuestion;
+                final isFinished = appProvider.isDailyQuizFinished;
+                final questionNumber = (appProvider.quizStep + 1).clamp(
+                  1,
+                  dailyQuizQuestions.length,
+                );
+                final progress = dailyQuizQuestions.isEmpty
+                    ? 0.0
+                    : (questionNumber / dailyQuizQuestions.length)
+                          .clamp(0.0, 1.0)
+                          .toDouble();
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Ежедневный AI-квиз',
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          icon: const Icon(Icons.close_rounded),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    if (!isFinished) ...[
+                      Row(
+                        children: [
+                          Text(
+                            'Вопрос $questionNumber / ${dailyQuizQuestions.length}',
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w800),
+                          ),
+                          const Spacer(),
+                          Text(
+                            '+${appProvider.dailyQuizXpReward} XP',
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  color: const Color(0xFF66F0D7),
+                                  fontWeight: FontWeight.w800,
+                                ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(999),
+                        child: ShaderMask(
+                          shaderCallback: (bounds) {
+                            return const LinearGradient(
+                              colors: [
+                                Color(0xFF34D1BF),
+                                Color(0xFF59A8FF),
+                                Color(0xFFAF5CFF),
+                              ],
+                            ).createShader(bounds);
+                          },
+                          blendMode: BlendMode.srcATop,
+                          child: LinearProgressIndicator(
+                            minHeight: 10,
+                            value: progress,
+                            backgroundColor: Colors.white.withValues(
+                              alpha: 0.06,
+                            ),
+                            valueColor: const AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 22),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          physics: const BouncingScrollPhysics(),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              GlassPanel(
+                                radius: 26,
+                                color: Colors.white.withValues(alpha: 0.04),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Container(
+                                          width: 44,
+                                          height: 44,
+                                          decoration: BoxDecoration(
+                                            color: const Color(
+                                              0xFF59A8FF,
+                                            ).withValues(alpha: 0.14),
+                                            borderRadius: BorderRadius.circular(
+                                              16,
+                                            ),
+                                          ),
+                                          alignment: Alignment.center,
+                                          child: const Icon(
+                                            LucideIcons.bot,
+                                            color: Color(0xFF7EBBFF),
+                                            size: 20,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Text(
+                                            'AI-сценарий дня',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .titleMedium
+                                                ?.copyWith(
+                                                  fontWeight: FontWeight.w800,
+                                                ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 14),
+                                    Text(
+                                      question?.questionText ?? '',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .headlineSmall
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w800,
+                                            height: 1.25,
+                                          ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 18),
+                              _QuizAnswerButton(
+                                accentColor: const Color(0xFFFFB457),
+                                title: 'Вариант А',
+                                text: question?.optionA ?? '',
+                                onTap: () => context
+                                    .read<AppProvider>()
+                                    .submitQuizAnswer(0),
+                              ),
+                              const SizedBox(height: 12),
+                              _QuizAnswerButton(
+                                accentColor: const Color(0xFF34D1BF),
+                                title: 'Вариант Б',
+                                text: question?.optionB ?? '',
+                                onTap: () => context
+                                    .read<AppProvider>()
+                                    .submitQuizAnswer(1),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ] else ...[
+                      Expanded(
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 88,
+                                height: 88,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: const Color(
+                                    0xFF51E6A9,
+                                  ).withValues(alpha: 0.16),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(
+                                        0xFF51E6A9,
+                                      ).withValues(alpha: 0.24),
+                                      blurRadius: 28,
+                                    ),
+                                  ],
+                                ),
+                                alignment: Alignment.center,
+                                child: const Icon(
+                                  LucideIcons.checkCircle2,
+                                  size: 42,
+                                  color: Color(0xFF51E6A9),
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+                              Text(
+                                'Квиз пройден!',
+                                style: Theme.of(context).textTheme.headlineSmall
+                                    ?.copyWith(fontWeight: FontWeight.w900),
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                '+${appProvider.dailyQuizXpReward} XP и твой Радар обновлен',
+                                textAlign: TextAlign.center,
+                                style: Theme.of(context).textTheme.bodyLarge
+                                    ?.copyWith(
+                                      color: Colors.white70,
+                                      height: 1.5,
+                                    ),
+                              ),
+                              const SizedBox(height: 22),
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton.icon(
+                                  onPressed: () => Navigator.of(context).pop(),
+                                  icon: const Icon(LucideIcons.check),
+                                  label: const Text('Закрыть'),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                );
+              },
+            ),
+          ),
+        ),
       ),
-      child: Text(canClaim ? 'Запустить' : 'Получено'),
+    );
+  }
+}
+
+class _QuizAnswerButton extends StatelessWidget {
+  const _QuizAnswerButton({
+    required this.accentColor,
+    required this.title,
+    required this.text,
+    required this.onTap,
+  });
+
+  final Color accentColor;
+  final String title;
+  final String text;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassPanel(
+      padding: EdgeInsets.zero,
+      radius: 22,
+      color: accentColor.withValues(alpha: 0.08),
+      borderColor: accentColor.withValues(alpha: 0.20),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(22),
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: accentColor,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  text,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: Colors.white,
+                    height: 1.45,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -735,7 +908,7 @@ class _RegistrySection extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            'Сертификаты, проекты и волонтерство, которые реально усиливают HR-профиль.',
+            'Сертификаты, проекты и волонтерство, которые усиливают твой HR-профиль и влияют на общую оценку.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: Colors.white70,
               height: 1.45,
@@ -752,7 +925,7 @@ class _RegistrySection extends StatelessWidget {
                 border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
               ),
               child: Text(
-                'Пока нет достижений. Добавь первый сертификат или проект, чтобы начать прокачку профиля.',
+                'Пока нет достижений. Добавь первый сертификат или проект в Реестре, чтобы начать прокачку профиля.',
                 style: Theme.of(
                   context,
                 ).textTheme.bodyLarge?.copyWith(color: Colors.white70),
@@ -892,6 +1065,104 @@ class _AchievementCard extends StatelessWidget {
       case AchievementType.project:
         return const Color(0xFF34D1BF);
     }
+  }
+}
+
+class _AvatarBadge extends StatelessWidget {
+  const _AvatarBadge({required this.userName});
+
+  final String userName;
+
+  @override
+  Widget build(BuildContext context) {
+    final parts = userName.trim().split(' ').where((part) => part.isNotEmpty);
+    final initials = parts.take(2).map((part) => part[0]).join();
+
+    return Container(
+      width: 74,
+      height: 74,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: const LinearGradient(
+          colors: [Color(0xFF59A8FF), Color(0xFF34D1BF)],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF59A8FF).withValues(alpha: 0.22),
+            blurRadius: 24,
+            offset: const Offset(0, 14),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(2),
+      child: Container(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: const Color(0xFF08111E),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          initials.isEmpty ? 'U' : initials,
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.1,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _InfoBadge extends StatelessWidget {
+  const _InfoBadge({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 17, color: color),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Colors.white60,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Text(
+                value,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }
 
