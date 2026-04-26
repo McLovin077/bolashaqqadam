@@ -2,24 +2,41 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
+import '../providers/app_provider.dart';
 import '../providers/navigation_provider.dart';
 import '../widgets/glass_panel.dart';
 import 'jobs_screen.dart';
-import 'registry_screen.dart';
+import 'profile_screen.dart';
 import 'swipes_screen.dart';
 
-class MainScreen extends StatelessWidget {
+class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
+
+  @override
+  State<MainScreen> createState() => _MainScreenState();
+}
+
+class _MainScreenState extends State<MainScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      context.read<AppProvider>().registerDailyVisit();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final navigationProvider = context.watch<NavigationProvider>();
 
-    const screens = [SwipeScreen(), RegistryScreen(), JobsScreen()];
+    const screens = [SwipeScreen(), ProfileScreen(), JobsScreen()];
 
     const destinations = [
       _NavDestination(label: 'Свайпы', icon: LucideIcons.sparkles),
-      _NavDestination(label: 'Реестр', icon: LucideIcons.fileBadge),
+      _NavDestination(label: 'Профиль', icon: Icons.person_outline),
       _NavDestination(label: 'Jasa', icon: LucideIcons.briefcase),
     ];
 

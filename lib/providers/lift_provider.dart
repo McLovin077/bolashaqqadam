@@ -513,6 +513,48 @@ class LiftProvider extends ChangeNotifier {
     );
   }
 
+  JobModel? get topCareerMatchJob {
+    if (!hasAnalysisResult) {
+      return null;
+    }
+
+    JobModel? bestJob;
+    var bestScore = -1;
+
+    for (final job in _jobs) {
+      final score = calculateMatchFor(job).percentage;
+      if (score > bestScore) {
+        bestScore = score;
+        bestJob = job;
+      }
+    }
+
+    return bestJob;
+  }
+
+  String get suggestedCareerTitle {
+    return topCareerMatchJob?.title ?? _fallbackCareerTitle;
+  }
+
+  String get _fallbackCareerTitle {
+    switch (archetype) {
+      case LiftArchetypes.systemsIntegrator:
+        return 'AI Engineer';
+      case LiftArchetypes.creativeVisionary:
+        return 'Product Designer';
+      case LiftArchetypes.empatheticLeader:
+        return 'Community Lead';
+      case LiftArchetypes.strategicArchitect:
+        return 'Product Manager';
+      case LiftArchetypes.operationalEngineer:
+        return 'Operations Manager';
+      case LiftArchetypes.adaptiveHybrid:
+        return 'Project Coordinator';
+    }
+
+    return 'Project Coordinator';
+  }
+
   Map<String, JobMatchResultModel> get jobMatches {
     return {for (final job in _jobs) job.id: calculateMatchFor(job)};
   }

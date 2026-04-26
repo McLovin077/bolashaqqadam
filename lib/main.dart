@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
+import 'providers/app_provider.dart';
 import 'providers/lift_provider.dart';
 import 'providers/navigation_provider.dart';
 import 'screens/main_screen.dart';
@@ -41,6 +42,7 @@ class LiftApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => NavigationProvider()),
+        ChangeNotifierProvider(create: (_) => AppProvider()),
         ChangeNotifierProvider(create: (_) => LiftProvider()),
       ],
       child: MaterialApp(

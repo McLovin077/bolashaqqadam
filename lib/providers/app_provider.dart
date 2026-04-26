@@ -11,6 +11,7 @@ class AppProvider extends ChangeNotifier {
     for (final achievement in _savedAchievements) {
       _applyAchievementBoosts(achievement);
     }
+    _registerVisit(DateTime.now(), notify: false);
   }
 
   final List<QuestionModel> _questions = [
@@ -274,14 +275,19 @@ class AppProvider extends ChangeNotifier {
   };
   final List<QuestionChoice> _answerHistory = [];
   final Set<String> _appliedJobIds = {};
+  final String _userName = 'User';
 
   AchievementFilter _achievementFilter = AchievementFilter.all;
   int _currentQuestionIndex = 0;
   int _assessmentSessionId = 0;
   int _scanCursor = 0;
+  int _dailyStreak = 1;
   bool _isAnalyzing = false;
   bool _analysisReady = false;
   bool _portfolioSaved = false;
+  DateTime? _lastVisit;
+  DateTime? _lastDailyQuizClaimAt;
+  String? _lastDailyQuizBoostAxis;
 
   List<QuestionModel> get questions => List.unmodifiable(_questions);
   List<JobModel> get jobs => List.unmodifiable(_jobs);
@@ -295,9 +301,25 @@ class AppProvider extends ChangeNotifier {
   int get currentQuestionIndex => _currentQuestionIndex;
   int get assessmentSessionId => _assessmentSessionId;
   int get totalQuestions => _questions.length;
+  String get userName => _userName;
+  int get dailyStreak => _dailyStreak;
+  DateTime? get lastVisit => _lastVisit;
   bool get isAnalyzing => _isAnalyzing;
   bool get hasAnalysisResult => _analysisReady;
   bool get isPortfolioSaved => _portfolioSaved;
+  bool get canClaimDailyQuizBoost =>
+      _lastDailyQuizClaimAt == null ||
+      !_isSameDay(_lastDailyQuizClaimAt!, DateTime.now());
+  String? get lastDailyQuizBoostAxis => _lastDailyQuizBoostAxis;
+  int get dailyQuizReward => 5;
+  int get overallLiftLevel => _savedAchievements.fold<int>(
+    0,
+    (sum, achievement) => sum + achievement.aiWeight.round(),
+  );
+  double get overallHrValue => _savedAchievements.fold<double>(
+    0,
+    (sum, achievement) => sum + achievement.aiWeight,
+  );
 
   double get progress {
     if (_questions.isEmpty) {
@@ -534,6 +556,24 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void registerDailyVisit() {
+    _registerVisit(DateTime.now());
+  }
+
+  bool completeDailyQuizBoost() {
+    if (!canClaimDailyQuizBoost) {
+      return false;
+    }
+
+    final targetAxis = _lowestAxis;
+    _achievementAxisTotals[targetAxis] =
+        (_achievementAxisTotals[targetAxis] ?? 0) + dailyQuizReward;
+    _lastDailyQuizBoostAxis = targetAxis;
+    _lastDailyQuizClaimAt = DateTime.now();
+    notifyListeners();
+    return true;
+  }
+
   bool saveAchievementToRegistry(UserAchievement achievement) {
     final alreadyExists = _savedAchievements.any(
       (saved) => saved.id == achievement.id,
@@ -746,6 +786,43 @@ class AppProvider extends ChangeNotifier {
     }
 
     return (numerator / denominator).clamp(0.0, 1.0).toDouble();
+  }
+
+  String get _lowestAxis {
+    final entries = rawAxisTotals.entries.toList()
+      ..sort((a, b) => a.value.compareTo(b.value));
+    return entries.first.key;
+  }
+
+  void _registerVisit(DateTime now, {bool notify = true}) {
+    if (_lastVisit == null) {
+      _lastVisit = now;
+      _dailyStreak = 1;
+      if (notify) {
+        notifyListeners();
+      }
+      return;
+    }
+
+    if (_isSameDay(_lastVisit!, now)) {
+      return;
+    }
+
+    final yesterday = DateTime(now.year, now.month, now.day - 1);
+    if (_isSameDay(_lastVisit!, yesterday)) {
+      _dailyStreak += 1;
+    } else {
+      _dailyStreak = 1;
+    }
+
+    _lastVisit = now;
+    if (notify) {
+      notifyListeners();
+    }
+  }
+
+  bool _isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
   void _applyAchievementBoosts(UserAchievement achievement) {

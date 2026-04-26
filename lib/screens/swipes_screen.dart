@@ -121,7 +121,7 @@ class _SwipeScreenState extends State<SwipeScreen> {
                       ),
                       const SizedBox(height: 10),
                       SizedBox(
-                        height: 156,
+                        height: 168,
                         child: _SwipeInsightsZone(
                           question: liftProvider.currentQuestion!,
                           scores: liftProvider.radarScores,
@@ -883,8 +883,16 @@ class _SwipeInsightsZone extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 12),
-        Expanded(child: _SwipeRadarPreview(scores: scores)),
+        const SizedBox(height: 18),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              child: _SwipeRadarPreview(scores: scores),
+            ),
+          ),
+        ),
       ],
     );
   }
