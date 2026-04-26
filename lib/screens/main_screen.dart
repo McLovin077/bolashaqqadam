@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/navigation_provider.dart';
 import '../widgets/glass_panel.dart';
-import 'jasa_vacancies_screen.dart';
+import 'jobs_screen.dart';
 import 'registry_screen.dart';
 import 'swipes_screen.dart';
 
