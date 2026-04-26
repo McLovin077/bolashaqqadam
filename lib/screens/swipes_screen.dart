@@ -14,6 +14,7 @@ import '../providers/lift_provider.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/glass_panel.dart';
 import 'analytics_screen.dart';
+import 'profile_screen.dart';
 
 class SwipeScreen extends StatefulWidget {
   const SwipeScreen({super.key});
@@ -210,9 +211,48 @@ class _SwipeHeader extends StatelessWidget {
     return Stack(
       alignment: Alignment.center,
       children: [
-        const Align(
+        Align(
           alignment: Alignment.centerLeft,
-          child: SizedBox(width: 54, height: 54),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF59A8FF).withValues(alpha: 0.18),
+                  blurRadius: 20,
+                ),
+              ],
+            ),
+            child: GlassPanel(
+              padding: EdgeInsets.zero,
+              radius: 20,
+              blur: 22,
+              color: const Color(0xFF0F1628).withValues(alpha: 0.70),
+              borderColor: const Color(0xFF7EBBFF).withValues(alpha: 0.24),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const ProfileScreen(),
+                      ),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(20),
+                  child: const SizedBox(
+                    width: 52,
+                    height: 52,
+                    child: Icon(
+                      Icons.person_outline_rounded,
+                      size: 24,
+                      color: Color(0xFFBFE1FF),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
         ),
         const Center(child: _LiftupWordmark()),
         Align(

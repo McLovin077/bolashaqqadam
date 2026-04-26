@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
-import '../models/certificate_model.dart';
-import '../providers/lift_provider.dart';
+import '../models/models.dart';
+import '../providers/app_provider.dart';
+import '../widgets/animated_background.dart';
 import '../widgets/glass_panel.dart';
-import '../widgets/lift_backdrop.dart';
 
 class RegistryScreen extends StatefulWidget {
   const RegistryScreen({super.key});
@@ -14,60 +14,76 @@ class RegistryScreen extends StatefulWidget {
   State<RegistryScreen> createState() => _RegistryScreenState();
 }
 
-class _RegistryScreenState extends State<RegistryScreen> {
-  String? _highlightedCertificateId;
+class _RegistryScreenState extends State<RegistryScreen>
+    with SingleTickerProviderStateMixin {
+  String? _highlightedAchievementId;
 
   @override
   Widget build(BuildContext context) {
-    final certificates = context.watch<LiftProvider>().sortedCertificates;
+    final appProvider = context.watch<AppProvider>();
+    final achievements = appProvider.filteredAchievements;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Stack(
         children: [
-          LiftBackdrop(
-            primaryGlow: const Color(0xFFFFC857),
-            secondaryGlow: const Color(0xFF59A8FF),
-            tertiaryGlow: const Color(0xFF34D1BF),
-            child: SafeArea(
-              child: CustomScrollView(
-                physics: const BouncingScrollPhysics(),
-                slivers: [
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const _RegistryHeader(),
-                          const SizedBox(height: 18),
-                          _RegistryStats(
-                            certificatesCount: certificates.length,
-                          ),
-                          const SizedBox(height: 18),
-                        ],
-                      ),
+          const Positioned.fill(
+            child: IgnorePointer(
+              child: AnimatedBackground(child: SizedBox.expand()),
+            ),
+          ),
+          SafeArea(
+            child: CustomScrollView(
+              physics: const BouncingScrollPhysics(),
+              slivers: [
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const _RegistryHeader(),
+                        const SizedBox(height: 18),
+                        _RegistryStats(
+                          achievementsCount:
+                              appProvider.savedAchievements.length,
+                          smartRating: appProvider.smartRating,
+                        ),
+                        const SizedBox(height: 18),
+                        _RegistryFilters(
+                          selected: appProvider.achievementFilter,
+                          onSelected: appProvider.setAchievementFilter,
+                        ),
+                        const SizedBox(height: 18),
+                      ],
                     ),
                   ),
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
-                    sliver: SliverList(
-                      delegate: SliverChildBuilderDelegate((context, index) {
-                        final certificate = certificates[index];
+                ),
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
+                  sliver: achievements.isEmpty
+                      ? SliverToBoxAdapter(
+                          child: _EmptyRegistryState(onScan: _openScannerSheet),
+                        )
+                      : SliverList(
+                          delegate: SliverChildBuilderDelegate((
+                            context,
+                            index,
+                          ) {
+                            final achievement = achievements[index];
 
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 14),
-                          child: _CertificateCard(
-                            certificate: certificate,
-                            isHighlighted:
-                                certificate.id == _highlightedCertificateId,
-                          ),
-                        );
-                      }, childCount: certificates.length),
-                    ),
-                  ),
-                ],
-              ),
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 14),
+                              child: _AchievementCard(
+                                achievement: achievement,
+                                isHighlighted:
+                                    achievement.id == _highlightedAchievementId,
+                              ),
+                            );
+                          }, childCount: achievements.length),
+                        ),
+                ),
+              ],
             ),
           ),
           Positioned(
@@ -81,23 +97,23 @@ class _RegistryScreenState extends State<RegistryScreen> {
   }
 
   Future<void> _openScannerSheet() async {
-    final certificate = await showModalBottomSheet<CertificateModel>(
+    final achievement = await showModalBottomSheet<UserAchievement>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => const _ScannerSheet(),
     );
 
-    if (!mounted || certificate == null) {
+    if (!mounted || achievement == null) {
       return;
     }
 
     setState(() {
-      _highlightedCertificateId = certificate.id;
+      _highlightedAchievementId = achievement.id;
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Сертификат добавлен: ${certificate.title}')),
+      SnackBar(content: Text('Добавлено в реестр: ${achievement.title}')),
     );
 
     await Future<void>.delayed(const Duration(milliseconds: 1800));
@@ -107,45 +123,8 @@ class _RegistryScreenState extends State<RegistryScreen> {
     }
 
     setState(() {
-      _highlightedCertificateId = null;
+      _highlightedAchievementId = null;
     });
-  }
-}
-
-class _ScannerFab extends StatelessWidget {
-  const _ScannerFab({required this.onPressed});
-
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(999),
-        child: Ink(
-          width: 66,
-          height: 66,
-          decoration: ShapeDecoration(
-            shape: const CircleBorder(),
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF34D1BF), Color(0xFF59A8FF)],
-            ),
-            shadows: [
-              BoxShadow(
-                color: const Color(0xFF59A8FF).withValues(alpha: 0.24),
-                blurRadius: 24,
-                offset: const Offset(0, 14),
-              ),
-            ],
-          ),
-          child: const Icon(LucideIcons.scanLine, color: Color(0xFF04111A)),
-        ),
-      ),
-    );
   }
 }
 
@@ -177,12 +156,12 @@ class _RegistryHeader extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         Text(
-          'Твои сертификаты отсортированы по market value для HR и партнёров.',
+          'Сканируй сертификаты, проекты и волонтерство, чтобы прокачивать LIFT-профиль.',
           style: Theme.of(context).textTheme.headlineMedium,
         ),
         const SizedBox(height: 10),
         Text(
-          'Сканер распознаёт новые достижения и поднимает самые сильные артефакты наверх.',
+          'AI-сканер распознает тип достижения, считает HR-Value и сразу добавляет сигнал в карьерный профиль.',
           style: Theme.of(
             context,
           ).textTheme.bodyLarge?.copyWith(color: Colors.white70),
@@ -193,9 +172,13 @@ class _RegistryHeader extends StatelessWidget {
 }
 
 class _RegistryStats extends StatelessWidget {
-  const _RegistryStats({required this.certificatesCount});
+  const _RegistryStats({
+    required this.achievementsCount,
+    required this.smartRating,
+  });
 
-  final int certificatesCount;
+  final int achievementsCount;
+  final double smartRating;
 
   @override
   Widget build(BuildContext context) {
@@ -204,7 +187,7 @@ class _RegistryStats extends StatelessWidget {
         Expanded(
           child: _StatCard(
             title: 'В реестре',
-            value: '$certificatesCount',
+            value: '$achievementsCount',
             accentColor: const Color(0xFF59A8FF),
             icon: LucideIcons.layers,
           ),
@@ -212,10 +195,10 @@ class _RegistryStats extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: _StatCard(
-            title: 'Scan Ready',
-            value: 'AI',
+            title: 'Smart Rating',
+            value: smartRating.toStringAsFixed(1),
             accentColor: const Color(0xFF34D1BF),
-            icon: LucideIcons.scanLine,
+            icon: LucideIcons.sparkles,
           ),
         ),
       ],
@@ -279,21 +262,124 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-class _CertificateCard extends StatelessWidget {
-  const _CertificateCard({
-    required this.certificate,
+class _RegistryFilters extends StatelessWidget {
+  const _RegistryFilters({required this.selected, required this.onSelected});
+
+  final AchievementFilter selected;
+  final ValueChanged<AchievementFilter> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: AchievementFilter.values.map((filter) {
+        final isSelected = filter == selected;
+
+        return InkWell(
+          onTap: () => onSelected(filter),
+          borderRadius: BorderRadius.circular(999),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? const Color(0xFF59A8FF).withValues(alpha: 0.16)
+                  : Colors.white.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(
+                color: isSelected
+                    ? const Color(0xFF59A8FF).withValues(alpha: 0.24)
+                    : Colors.white.withValues(alpha: 0.05),
+              ),
+            ),
+            child: Text(
+              filter.label,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: isSelected ? const Color(0xFFBFE1FF) : Colors.white70,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+class _EmptyRegistryState extends StatelessWidget {
+  const _EmptyRegistryState({required this.onScan});
+
+  final VoidCallback onScan;
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassPanel(
+      radius: 30,
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          const Color(0xFF121B30).withValues(alpha: 0.92),
+          const Color(0xFF0B101E).withValues(alpha: 0.82),
+        ],
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 68,
+            height: 68,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: const Color(0xFF59A8FF).withValues(alpha: 0.14),
+            ),
+            alignment: Alignment.center,
+            child: const Icon(
+              LucideIcons.scanLine,
+              size: 30,
+              color: Color(0xFF7EBBFF),
+            ),
+          ),
+          const SizedBox(height: 18),
+          Text(
+            'Реестр пока пуст',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Запусти AI-сканер и добавь первое достижение. Оно сразу усилит профиль и оценку от LIFT.',
+            textAlign: TextAlign.center,
+            style: Theme.of(
+              context,
+            ).textTheme.bodyLarge?.copyWith(color: Colors.white70),
+          ),
+          const SizedBox(height: 18),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: onScan,
+              icon: const Icon(LucideIcons.scanLine),
+              label: const Text('Открыть AI-сканер'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AchievementCard extends StatelessWidget {
+  const _AchievementCard({
+    required this.achievement,
     required this.isHighlighted,
   });
 
-  final CertificateModel certificate;
+  final UserAchievement achievement;
   final bool isHighlighted;
 
   @override
   Widget build(BuildContext context) {
-    final accentColor = _accentColorForType(certificate.type);
-    final topGlowColor = certificate.isTopMarketValue
-        ? const Color(0xFFFFC857)
-        : accentColor;
+    final accentColor = _accentColor(achievement.type);
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 280),
@@ -302,9 +388,7 @@ class _CertificateCard extends StatelessWidget {
         ..translateByDouble(0.0, isHighlighted ? -4.0 : 0.0, 0.0, 1.0),
       child: GlassPanel(
         radius: 30,
-        borderColor: topGlowColor.withValues(
-          alpha: certificate.isTopMarketValue ? 0.32 : 0.18,
-        ),
+        borderColor: accentColor.withValues(alpha: isHighlighted ? 0.30 : 0.16),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -315,10 +399,8 @@ class _CertificateCard extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: topGlowColor.withValues(
-              alpha: certificate.isTopMarketValue ? 0.22 : 0.1,
-            ),
-            blurRadius: certificate.isTopMarketValue ? 36 : 24,
+            color: accentColor.withValues(alpha: isHighlighted ? 0.22 : 0.10),
+            blurRadius: isHighlighted ? 34 : 24,
             offset: const Offset(0, 18),
           ),
         ],
@@ -336,10 +418,9 @@ class _CertificateCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(18),
                   ),
                   alignment: Alignment.center,
-                  child: Icon(
-                    _iconForType(certificate.type),
-                    color: accentColor,
-                    size: 28,
+                  child: Text(
+                    achievement.typeEmoji,
+                    style: const TextStyle(fontSize: 28),
                   ),
                 ),
                 const SizedBox(width: 14),
@@ -348,7 +429,7 @@ class _CertificateCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        certificate.title,
+                        achievement.title,
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           fontSize: 19,
                           height: 1.28,
@@ -356,7 +437,7 @@ class _CertificateCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        certificate.issuer,
+                        achievement.organization,
                         style: Theme.of(
                           context,
                         ).textTheme.bodyMedium?.copyWith(color: Colors.white60),
@@ -367,70 +448,65 @@ class _CertificateCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
+            Text(
+              achievement.description,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Colors.white70,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 14),
             Wrap(
               spacing: 10,
               runSpacing: 10,
               children: [
                 _MetaBadge(
-                  icon: _chipIconForType(certificate.type),
-                  label: certificate.type,
+                  icon: _chipIcon(achievement.type),
+                  label: achievement.typeLabel,
                   foregroundColor: Colors.white,
                   backgroundColor: Colors.white.withValues(alpha: 0.06),
                 ),
                 _MetaBadge(
                   icon: LucideIcons.sparkles,
-                  label: 'HR ${certificate.hrWeight}',
-                  foregroundColor: topGlowColor,
-                  backgroundColor: topGlowColor.withValues(alpha: 0.14),
+                  label: 'HR ${achievement.aiWeight.toStringAsFixed(1)}',
+                  foregroundColor: accentColor,
+                  backgroundColor: accentColor.withValues(alpha: 0.14),
                 ),
-                if (certificate.isScanned)
+                if (achievement.dateLabel.isNotEmpty)
                   _MetaBadge(
-                    icon: LucideIcons.scanLine,
-                    label: 'AI scanned',
-                    foregroundColor: const Color(0xFF59A8FF),
+                    icon: LucideIcons.calendarDays,
+                    label: achievement.dateLabel,
+                    foregroundColor: const Color(0xFF7EBBFF),
                     backgroundColor: const Color(
                       0xFF59A8FF,
                     ).withValues(alpha: 0.14),
                   ),
               ],
             ),
-            if (certificate.isTopMarketValue) ...[
+            if (achievement.tags.isNotEmpty) ...[
               const SizedBox(height: 14),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(999),
-                  gradient: LinearGradient(
-                    colors: [
-                      const Color(0xFFFFC857).withValues(alpha: 0.18),
-                      const Color(0xFFFFA95C).withValues(alpha: 0.12),
-                    ],
-                  ),
-                  border: Border.all(
-                    color: const Color(0xFFFFC857).withValues(alpha: 0.26),
-                  ),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      LucideIcons.badgeCheck,
-                      size: 16,
-                      color: Color(0xFFFFD777),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: achievement.tags.take(4).map((tag) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 7,
                     ),
-                    SizedBox(width: 8),
-                    Text(
-                      'Top 10% Market Value',
-                      style: TextStyle(
-                        color: Color(0xFFFFD777),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      tag,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.white70,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                  ],
-                ),
+                  );
+                }).toList(),
               ),
             ],
           ],
@@ -439,54 +515,25 @@ class _CertificateCard extends StatelessWidget {
     );
   }
 
-  IconData _iconForType(String type) {
+  Color _accentColor(AchievementType type) {
     switch (type) {
-      case 'Олимпиада':
-        return Icons.emoji_events_rounded;
-      case 'Курс':
-        return Icons.school_rounded;
-      case 'Вебинар':
-        return Icons.ondemand_video_rounded;
-      case 'Проект':
-        return Icons.auto_awesome_rounded;
-      case 'Волонтерство':
-        return Icons.volunteer_activism_rounded;
-      default:
-        return Icons.workspace_premium_rounded;
-    }
-  }
-
-  IconData _chipIconForType(String type) {
-    switch (type) {
-      case 'Олимпиада':
-        return Icons.military_tech_rounded;
-      case 'Курс':
-        return Icons.menu_book_rounded;
-      case 'Вебинар':
-        return Icons.live_tv_rounded;
-      case 'Проект':
-        return Icons.auto_graph_rounded;
-      case 'Волонтерство':
-        return Icons.favorite_rounded;
-      default:
-        return Icons.label_rounded;
-    }
-  }
-
-  Color _accentColorForType(String type) {
-    switch (type) {
-      case 'Олимпиада':
-        return const Color(0xFFFFC857);
-      case 'Курс':
+      case AchievementType.certificate:
         return const Color(0xFF59A8FF);
-      case 'Вебинар':
-        return const Color(0xFF9E7BFF);
-      case 'Проект':
+      case AchievementType.volunteer:
+        return const Color(0xFFFFC857);
+      case AchievementType.project:
         return const Color(0xFF34D1BF);
-      case 'Волонтерство':
-        return const Color(0xFFFF7AC6);
-      default:
-        return const Color(0xFF7EE1FF);
+    }
+  }
+
+  IconData _chipIcon(AchievementType type) {
+    switch (type) {
+      case AchievementType.certificate:
+        return LucideIcons.fileBadge;
+      case AchievementType.volunteer:
+        return LucideIcons.heartHandshake;
+      case AchievementType.project:
+        return LucideIcons.folderKanban;
     }
   }
 }
@@ -525,6 +572,43 @@ class _MetaBadge extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ScannerFab extends StatelessWidget {
+  const _ScannerFab({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(999),
+        child: Ink(
+          width: 66,
+          height: 66,
+          decoration: ShapeDecoration(
+            shape: const CircleBorder(),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF34D1BF), Color(0xFF59A8FF)],
+            ),
+            shadows: [
+              BoxShadow(
+                color: const Color(0xFF59A8FF).withValues(alpha: 0.24),
+                blurRadius: 24,
+                offset: const Offset(0, 14),
+              ),
+            ],
+          ),
+          child: const Icon(LucideIcons.scanLine, color: Color(0xFF04111A)),
+        ),
       ),
     );
   }
@@ -589,14 +673,14 @@ class _ScannerSheetState extends State<_ScannerSheet>
             ),
             const SizedBox(height: 12),
             Text(
-              'Ищем сертификат в кадре и оцениваем его HR-ценность.',
+              'AI распознает достижение, оценивает его HR-Value и добавляет в реестр.',
               style: Theme.of(
                 context,
               ).textTheme.bodyLarge?.copyWith(color: Colors.white70),
             ),
             const SizedBox(height: 22),
             AspectRatio(
-              aspectRatio: 0.9,
+              aspectRatio: 0.95,
               child: Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(28),
@@ -691,7 +775,7 @@ class _ScannerSheetState extends State<_ScannerSheet>
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Сканирование документа... AI распознаёт issuer, тип и ценность.',
+                    'Сканирование документа... AI распознает тип, дату и ценность достижения.',
                     style: Theme.of(
                       context,
                     ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
@@ -706,14 +790,14 @@ class _ScannerSheetState extends State<_ScannerSheet>
   }
 
   Future<void> _startDiscovery() async {
-    final certificate = await context
-        .read<LiftProvider>()
-        .simulateScannerDiscovery();
+    final achievement = await context
+        .read<AppProvider>()
+        .simulateAchievementScan();
 
     if (!mounted) {
       return;
     }
 
-    Navigator.of(context).pop(certificate);
+    Navigator.of(context).pop(achievement);
   }
 }

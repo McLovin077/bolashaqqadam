@@ -6,7 +6,7 @@ import '../providers/app_provider.dart';
 import '../providers/navigation_provider.dart';
 import '../widgets/glass_panel.dart';
 import 'jobs_screen.dart';
-import 'profile_screen.dart';
+import 'registry_screen.dart';
 import 'swipes_screen.dart';
 
 class MainScreen extends StatefulWidget {
@@ -32,11 +32,11 @@ class _MainScreenState extends State<MainScreen> {
   Widget build(BuildContext context) {
     final navigationProvider = context.watch<NavigationProvider>();
 
-    const screens = [SwipeScreen(), ProfileScreen(), JobsScreen()];
+    const screens = [SwipeScreen(), RegistryScreen(), JobsScreen()];
 
     const destinations = [
       _NavDestination(label: 'Свайпы', icon: LucideIcons.sparkles),
-      _NavDestination(label: 'Профиль', icon: Icons.person_outline),
+      _NavDestination(label: 'Реестр', icon: LucideIcons.fileBadge),
       _NavDestination(label: 'Jasa', icon: LucideIcons.briefcase),
     ];
 
