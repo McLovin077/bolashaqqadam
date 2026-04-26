@@ -9,6 +9,7 @@ import '../providers/lift_provider.dart';
 import '../providers/navigation_provider.dart';
 import '../widgets/glass_panel.dart';
 import '../widgets/lift_backdrop.dart';
+import 'main_screen.dart';
 
 class AnalyticsScreen extends StatelessWidget {
   const AnalyticsScreen({super.key});
@@ -52,9 +53,12 @@ class AnalyticsScreen extends StatelessWidget {
                           onPressed: () {
                             context.read<LiftProvider>().savePortfolio();
                             context.read<NavigationProvider>().changeTab(2);
-                            Navigator.of(
-                              context,
-                            ).popUntil((route) => route.isFirst);
+                            Navigator.of(context).pushAndRemoveUntil(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const MainScreen(),
+                              ),
+                              (route) => false,
+                            );
                           },
                           icon: const Icon(LucideIcons.rocket),
                           label: const Text('Перейти к стажировкам (Jasa)'),

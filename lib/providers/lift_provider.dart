@@ -624,27 +624,41 @@ class LiftProvider extends ChangeNotifier {
       );
     }
 
-    final strengthTokens = _strengthTokens;
-    final matchedTags = job.tagsNeeded
-        .where((tag) => strengthTokens.contains(tag))
-        .toList();
+    final axisRatios = _axisRatios;
+    final profileDistribution = _profileAxisDistribution;
+    final jobDistribution = _jobAxisDistribution(job);
 
-    final tagCoverage = job.tagsNeeded.isEmpty
-        ? 0
-        : matchedTags.length / job.tagsNeeded.length;
+    final tagScores = <String, double>{
+      for (final tag in job.tagsNeeded)
+        tag: _jobTagScore(tag: tag, axisRatios: axisRatios),
+    };
+    final matchedTags = tagScores.entries
+        .where((entry) => entry.value >= 0.58)
+        .map((entry) => entry.key)
+        .toList();
+    final tagFocusScore = tagScores.isEmpty
+        ? 0.45
+        : tagScores.values.reduce((a, b) => a + b) / tagScores.length;
 
     double axisWeightedScore = 0;
     double axisWeightTotal = 0;
-    final axisRatios = _axisRatios;
 
     for (final entry in job.axisAffinity.entries) {
       axisWeightedScore += (axisRatios[entry.key] ?? 0) * entry.value;
       axisWeightTotal += entry.value;
     }
 
-    final axisScore = axisWeightTotal == 0
+    final weightedAxisScore = axisWeightTotal == 0
         ? 0.5
         : axisWeightedScore / axisWeightTotal;
+    final axisDistributionScore = _distributionAlignmentScore(
+      profileDistribution,
+      jobDistribution,
+    );
+    final axisScore =
+        ((weightedAxisScore * 0.44) + (axisDistributionScore * 0.56))
+            .clamp(0.0, 1.0)
+            .toDouble();
 
     final archetypeAligned = job.preferredArchetypes.contains(archetype);
     final archetypeScore = archetypeAligned
@@ -652,9 +666,11 @@ class LiftProvider extends ChangeNotifier {
         : _softArchetypeAlignment(job);
 
     final rawScore =
-        (tagCoverage * 0.55) + (axisScore * 0.30) + (archetypeScore * 0.15);
+        ((tagFocusScore * 0.42) + (axisScore * 0.43) + (archetypeScore * 0.15))
+            .clamp(0.0, 1.0)
+            .toDouble();
 
-    final percentage = (rawScore * 100).round().clamp(52, 99);
+    final percentage = (40 + (rawScore * 57)).round().clamp(45, 99);
 
     return JobMatchResultModel(
       percentage: percentage,
@@ -690,6 +706,32 @@ class LiftProvider extends ChangeNotifier {
     };
   }
 
+  Map<String, double> get _profileAxisDistribution {
+    final axisRatios = _axisRatios;
+    final total = axisRatios.values.fold<double>(
+      0,
+      (sum, value) => sum + value,
+    );
+
+    if (total <= 0) {
+      final fallback = 1 / LiftAxes.all.length;
+      return {for (final axis in LiftAxes.all) axis: fallback};
+    }
+
+    return {
+      for (final axis in LiftAxes.all) axis: (axisRatios[axis] ?? 0) / total,
+    };
+  }
+
+  int get _maxTagFrequency {
+    if (_userTags.isEmpty) {
+      return 1;
+    }
+
+    return _userTags.values.reduce(math.max);
+  }
+
+  // ignore: unused_element
   Set<String> get _strengthTokens {
     final tokens = <String>{..._userTags.keys};
     final axisRatios = _axisRatios;
@@ -720,6 +762,94 @@ class LiftProvider extends ChangeNotifier {
     }
 
     return tokens;
+  }
+
+  Map<String, double> _jobAxisDistribution(JobModel job) {
+    final total = job.axisAffinity.values.fold<double>(
+      0,
+      (sum, value) => sum + value,
+    );
+
+    if (total <= 0) {
+      final fallback = 1 / LiftAxes.all.length;
+      return {for (final axis in LiftAxes.all) axis: fallback};
+    }
+
+    return {
+      for (final axis in LiftAxes.all)
+        axis: (job.axisAffinity[axis] ?? 0) / total,
+    };
+  }
+
+  double _distributionAlignmentScore(
+    Map<String, double> profileDistribution,
+    Map<String, double> jobDistribution,
+  ) {
+    double distance = 0;
+
+    for (final axis in LiftAxes.all) {
+      distance +=
+          ((profileDistribution[axis] ?? 0) - (jobDistribution[axis] ?? 0))
+              .abs();
+    }
+
+    return (1 - (distance / 2).clamp(0.0, 1.0)).clamp(0.0, 1.0).toDouble();
+  }
+
+  double _jobTagScore({
+    required String tag,
+    required Map<String, double> axisRatios,
+  }) {
+    final exactScore = _safeRatio(
+      numerator: (_userTags[tag] ?? 0).toDouble(),
+      denominator: _maxTagFrequency.toDouble(),
+    );
+    final inferredScore = _axisSupportForTag(tag, axisRatios);
+
+    return math.max(exactScore, inferredScore).clamp(0.0, 1.0).toDouble();
+  }
+
+  double _axisSupportForTag(String tag, Map<String, double> axisRatios) {
+    final lower = tag.toLowerCase();
+
+    if (lower.contains('коммуник') ||
+        lower.contains('лидер') ||
+        lower.contains('эмпат') ||
+        lower.contains('сторител')) {
+      return math.max(
+        axisRatios[LiftAxes.communication] ?? 0,
+        (axisRatios[LiftAxes.organization] ?? 0) * 0.72,
+      );
+    }
+
+    if (lower.contains('креатив') || lower.contains('ux')) {
+      return axisRatios[LiftAxes.creativity] ?? 0;
+    }
+
+    if (lower.contains('организ') ||
+        lower.contains('дисцип') ||
+        lower.contains('координ')) {
+      return axisRatios[LiftAxes.organization] ?? 0;
+    }
+
+    if (lower.contains('логик') ||
+        lower.contains('анализ') ||
+        lower.contains('стратег') ||
+        lower.contains('систем')) {
+      return math.max(
+        axisRatios[LiftAxes.logic] ?? 0,
+        (axisRatios[LiftAxes.organization] ?? 0) * 0.62,
+      );
+    }
+
+    if (lower.contains('технич') ||
+        lower.contains('автомат') ||
+        lower.contains('python') ||
+        lower.contains('прототип')) {
+      return axisRatios[LiftAxes.technical] ?? 0;
+    }
+
+    return 0;
   }
 
   double _softArchetypeAlignment(JobModel job) {
