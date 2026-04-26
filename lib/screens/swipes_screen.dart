@@ -35,6 +35,8 @@ class _SwipeScreenState extends State<SwipeScreen> {
     final liftProvider = context.watch<LiftProvider>();
     final questions = liftProvider.questions;
     final isCompleted = liftProvider.isAssessmentCompleted;
+    final screenHeight = MediaQuery.sizeOf(context).height;
+    final cardHeight = (screenHeight * 0.45).clamp(320.0, 410.0).toDouble();
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -54,8 +56,8 @@ class _SwipeScreenState extends State<SwipeScreen> {
                       totalSteps: liftProvider.totalQuestions,
                     ),
                     const SizedBox(height: 14),
-                    Expanded(
-                      flex: 7,
+                    SizedBox(
+                      height: cardHeight,
                       child: AnimatedSwitcher(
                         duration: const Duration(milliseconds: 260),
                         switchInCurve: Curves.easeOutCubic,
@@ -205,45 +207,96 @@ class _SwipeHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        GlassPanel(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-          radius: 20,
-          color: const Color(0xFF101827).withValues(alpha: 0.68),
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                LucideIcons.brainCircuit,
-                size: 16,
-                color: Color(0xFF66F0D7),
-              ),
-              SizedBox(width: 8),
-              Text(
-                'AI-Демистификатор',
-                style: TextStyle(
-                  color: Color(0xFF66F0D7),
-                  fontWeight: FontWeight.w700,
+    return SizedBox(
+      height: 60,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          const Align(
+            alignment: Alignment.centerLeft,
+            child: SizedBox(width: 50, height: 50),
+          ),
+          const Center(child: _LiftupWordmark()),
+          Align(
+            alignment: Alignment.centerRight,
+            child: GlassPanel(
+              padding: EdgeInsets.zero,
+              radius: 16,
+              blur: 20,
+              color: const Color(0xFF101827).withValues(alpha: 0.58),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => _showGuide(context),
+                  borderRadius: BorderRadius.circular(16),
+                  child: const SizedBox(
+                    width: 46,
+                    height: 46,
+                    child: Icon(
+                      Icons.tips_and_updates_outlined,
+                      size: 22,
+                      color: Color(0xFFFFD777),
+                    ),
+                  ),
                 ),
               ),
-            ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showGuide(BuildContext context) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.fromLTRB(18, 0, 18, 110),
+          backgroundColor: const Color(0xFF10192B).withValues(alpha: 0.96),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+            side: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+          ),
+          content: const Text(
+            '💡 Короткий гайд: Выбирай инстинктивно. Свайп влево — вариант А, свайп вправо — вариант В.',
           ),
         ),
-        const SizedBox(height: 12),
-        Text(
-          'LIFT читает твой стиль мышления через серию быстрых решений.',
-          style: Theme.of(context).textTheme.headlineMedium,
+      );
+  }
+}
+
+class _LiftupWordmark extends StatelessWidget {
+  const _LiftupWordmark();
+
+  @override
+  Widget build(BuildContext context) {
+    final textStyle = Theme.of(context).textTheme.titleLarge?.copyWith(
+      fontSize: 34,
+      fontWeight: FontWeight.w900,
+      letterSpacing: 3.2,
+      foreground: Paint()
+        ..shader = const LinearGradient(
+          colors: [Color(0xFFB9FCFF), Color(0xFF7EBBFF), Color(0xFF66F0D7)],
+        ).createShader(const Rect.fromLTWH(0, 0, 280, 56)),
+      shadows: [
+        Shadow(
+          color: const Color(0xFF59A8FF).withValues(alpha: 0.42),
+          blurRadius: 26,
         ),
-        const SizedBox(height: 8),
-        Text(
-          'Выбирай instinctively: влево для варианта A, вправо для варианта B.',
-          style: Theme.of(
-            context,
-          ).textTheme.bodyLarge?.copyWith(color: Colors.white70),
+        Shadow(
+          color: const Color(0xFF34D1BF).withValues(alpha: 0.24),
+          blurRadius: 34,
         ),
       ],
+    );
+
+    return Text(
+      'LIFTUP',
+      maxLines: 1,
+      overflow: TextOverflow.fade,
+      style: textStyle,
     );
   }
 }
@@ -403,55 +456,57 @@ class _SwipeQuestionCard extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               Expanded(
-                child: Center(
-                  child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 0),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        const SizedBox(height: 8),
                         _AdaptiveQuestionText(
                           text: question.questionText,
                           style: theme.textTheme.headlineMedium?.copyWith(
                             fontWeight: FontWeight.w700,
-                            height: 1.2,
+                            height: 1.18,
                           ),
                         ),
-                        const SizedBox(height: 18),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: _AnswerPreview(
-                                accentColor: const Color(0xFFFFB457),
-                                label: 'A',
-                                text: question.optionA_Text,
-                                alignment: CrossAxisAlignment.start,
+                        const SizedBox(height: 22),
+                        GlassPanel(
+                          radius: 24,
+                          blur: 20,
+                          color: Colors.white.withValues(alpha: 0.045),
+                          borderColor: Colors.white.withValues(alpha: 0.06),
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: _AnswerPreview(
+                                  accentColor: const Color(0xFFFFB457),
+                                  label: 'A',
+                                  text: question.optionA_Text,
+                                  alignment: CrossAxisAlignment.start,
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _AnswerPreview(
-                                accentColor: const Color(0xFF34D1BF),
-                                label: 'B',
-                                text: question.optionB_Text,
-                                alignment: CrossAxisAlignment.end,
-                                textAlign: TextAlign.right,
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: _AnswerPreview(
+                                  accentColor: const Color(0xFF34D1BF),
+                                  label: 'B',
+                                  text: question.optionB_Text,
+                                  alignment: CrossAxisAlignment.end,
+                                  textAlign: TextAlign.right,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
+                        const SizedBox(height: 8),
                       ],
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'Свайпай карточку или используй кнопки ниже.',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: Colors.white54,
-                ),
-                textAlign: TextAlign.center,
               ),
             ],
           ),
@@ -575,9 +630,13 @@ class _AnswerPreview extends StatelessWidget {
         Text(
           text,
           textAlign: textAlign,
-          style: Theme.of(
-            context,
-          ).textTheme.bodyMedium?.copyWith(color: Colors.white, height: 1.45),
+          maxLines: 3,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: Colors.white,
+            height: 1.42,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ],
     );

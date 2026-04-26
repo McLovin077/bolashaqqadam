@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:provider/provider.dart';
 
+import '../models/job_match_result_model.dart';
+import '../models/job_model.dart';
 import '../models/mock_data.dart';
+import '../providers/lift_provider.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/glass_panel.dart';
 import '../widgets/match_score_ring.dart';
@@ -11,6 +15,11 @@ class JobsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final liftProvider = context.watch<LiftProvider>();
+    final jobs = liftProvider.jobs;
+    final hasUnlockedMatches = liftProvider.isAssessmentCompleted;
+    final matches = liftProvider.jobMatches;
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: AnimatedBackground(
@@ -18,22 +27,28 @@ class JobsScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const _JobsHeader(),
+              _JobsHeader(hasUnlockedMatches: hasUnlockedMatches),
               Expanded(
                 child: ListView.builder(
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
                   physics: const BouncingScrollPhysics(),
-                  itemCount: mockJobs.length,
+                  itemCount: jobs.length,
                   itemBuilder: (context, index) {
-                    final job = mockJobs[index];
+                    final job = jobs[index];
+                    final match = matches[job.id];
 
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 14),
                       child: _JobCard(
                         job: job,
+                        match: match,
+                        hasUnlockedMatches: hasUnlockedMatches,
                         onApply: () => _showApplicationBottomSheet(
                           hostContext: context,
                           job: job,
+                          visibleMatchPercentage: hasUnlockedMatches
+                              ? match?.percentage
+                              : null,
                         ),
                       ),
                     );
@@ -49,7 +64,9 @@ class JobsScreen extends StatelessWidget {
 }
 
 class _JobsHeader extends StatelessWidget {
-  const _JobsHeader();
+  const _JobsHeader({required this.hasUnlockedMatches});
+
+  final bool hasUnlockedMatches;
 
   @override
   Widget build(BuildContext context) {
@@ -101,7 +118,9 @@ class _JobsHeader extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Подбор стажировок и проектов на основе AI-профиля.',
+                        hasUnlockedMatches
+                            ? 'Match Score рассчитан на основе твоего AI-профиля.'
+                            : 'Процент совпадения откроется после прохождения AI-опроса.',
                         style: Theme.of(
                           context,
                         ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
@@ -118,7 +137,9 @@ class _JobsHeader extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             Text(
-              'Откликайся через AI-портфолио: мини-интервью, мгновенный Cover Letter и отправка HR в один поток.',
+              hasUnlockedMatches
+                  ? 'Теперь ты видишь реальные карьерные матчи и можешь выбирать не вслепую, а по своему профилю.'
+                  : 'Сначала пройди свайпы, а потом LIFT откроет персональный Match Score для каждой стажировки.',
               style: Theme.of(
                 context,
               ).textTheme.bodyLarge?.copyWith(color: Colors.white70),
@@ -131,14 +152,24 @@ class _JobsHeader extends StatelessWidget {
 }
 
 class _JobCard extends StatelessWidget {
-  const _JobCard({required this.job, required this.onApply});
+  const _JobCard({
+    required this.job,
+    required this.match,
+    required this.hasUnlockedMatches,
+    required this.onApply,
+  });
 
-  final JobOffer job;
+  final JobModel job;
+  final JobMatchResultModel? match;
+  final bool hasUnlockedMatches;
   final VoidCallback onApply;
 
   @override
   Widget build(BuildContext context) {
-    final isPerfectMatch = job.matchPercentage >= 90;
+    final isPerfectMatch = hasUnlockedMatches && (match?.isPerfectFit ?? false);
+    final matchedTags = hasUnlockedMatches
+        ? (match?.matchedTags ?? const <String>[])
+        : const <String>[];
 
     return GlassPanel(
       radius: 30,
@@ -186,44 +217,57 @@ class _JobCard extends StatelessWidget {
                       children: [
                         Flexible(
                           child: Text(
-                            job.company,
+                            job.companyName,
                             style: Theme.of(context).textTheme.bodyLarge
                                 ?.copyWith(color: Colors.white70),
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        const Icon(
-                          LucideIcons.badgeCheck,
-                          size: 18,
-                          color: Color(0xFF59A8FF),
-                        ),
+                        if (job.isJasaVerified) ...[
+                          const SizedBox(width: 8),
+                          const Icon(
+                            LucideIcons.badgeCheck,
+                            size: 18,
+                            color: Color(0xFF59A8FF),
+                          ),
+                        ],
                       ],
                     ),
                   ],
                 ),
               ),
               const SizedBox(width: 12),
-              MatchScoreRing(percentage: job.matchPercentage),
+              hasUnlockedMatches && match != null
+                  ? MatchScoreRing(percentage: match!.percentage)
+                  : const _LockedMatchRing(),
             ],
           ),
           const SizedBox(height: 16),
           Wrap(
             spacing: 10,
             runSpacing: 10,
-            children: job.requiredSkills.map((skill) {
+            children: job.tagsNeeded.map((skill) {
+              final isMatched = matchedTags.contains(skill);
+
               return Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.06),
+                  color: isMatched
+                      ? const Color(0xFF34D1BF).withValues(alpha: 0.14)
+                      : Colors.white.withValues(alpha: 0.06),
                   borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color: isMatched
+                        ? const Color(0xFF34D1BF).withValues(alpha: 0.22)
+                        : Colors.transparent,
+                  ),
                 ),
                 child: Text(
                   skill,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: isMatched ? const Color(0xFF7CFFE0) : Colors.white,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -231,7 +275,7 @@ class _JobCard extends StatelessWidget {
             }).toList(),
           ),
           const SizedBox(height: 16),
-          if (isPerfectMatch)
+          if (hasUnlockedMatches && isPerfectMatch)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
@@ -249,7 +293,25 @@ class _JobCard extends StatelessWidget {
                 ),
               ),
             ),
-          if (isPerfectMatch) const SizedBox(height: 18),
+          if (!hasUnlockedMatches)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF59A8FF).withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(
+                  color: const Color(0xFF59A8FF).withValues(alpha: 0.18),
+                ),
+              ),
+              child: const Text(
+                'Пройди AI-опрос, чтобы открыть Match Score',
+                style: TextStyle(
+                  color: Color(0xFF7EBBFF),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          const SizedBox(height: 18),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
@@ -264,9 +326,42 @@ class _JobCard extends StatelessWidget {
   }
 }
 
+class _LockedMatchRing extends StatelessWidget {
+  const _LockedMatchRing();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 74,
+      height: 74,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.10),
+          width: 7,
+        ),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(LucideIcons.lock, size: 18, color: Colors.white70),
+          const SizedBox(height: 4),
+          Text(
+            'Hidden',
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: Colors.white60),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 Future<void> _showApplicationBottomSheet({
   required BuildContext hostContext,
-  required JobOffer job,
+  required JobModel job,
+  required int? visibleMatchPercentage,
 }) {
   final question = mockQuestions[job.id.hashCode.abs() % mockQuestions.length];
   var stage = _ApplicationStage.interview;
@@ -296,11 +391,13 @@ Future<void> _showApplicationBottomSheet({
               return;
             }
 
-            generatedLetter =
-                'Мой AI-профиль показывает высокое совпадение. '
-                'Я успешно прошел AI-тест на кризис-менеджмент. '
-                'Готов к работе на позиции ${job.title} в ${job.company}! '
-                'Дополнительно мой ответ "$selectedAnswer" показал, что я умею действовать быстро и сохранять фокус на результате.';
+            generatedLetter = visibleMatchPercentage == null
+                ? 'Мой AI-профиль уже показывает сильный потенциал для позиции ${job.title}. '
+                      'Я успешно прошел AI-тест на кризис-менеджмент, а ответ "$selectedAnswer" подтвердил мою способность быстро действовать и сохранять фокус на результате. '
+                      'Готов к работе в ${job.companyName}!'
+                : 'Мой AI-профиль показывает $visibleMatchPercentage% совпадения с позицией ${job.title}. '
+                      'Я успешно прошел AI-тест на кризис-менеджмент, а ответ "$selectedAnswer" показал, что я умею действовать быстро и сохранять фокус на результате. '
+                      'Готов к работе в ${job.companyName}!';
 
             setModalState(() {
               stage = _ApplicationStage.letterReady;
@@ -362,7 +459,9 @@ Future<void> _showApplicationBottomSheet({
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
-                                  '${job.company} • ${job.matchPercentage}% match',
+                                  visibleMatchPercentage == null
+                                      ? '${job.companyName} • Match откроется после AI-опроса'
+                                      : '${job.companyName} • $visibleMatchPercentage% match',
                                   style: Theme.of(modalContext)
                                       .textTheme
                                       .bodyMedium

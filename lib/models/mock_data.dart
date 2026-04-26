@@ -67,14 +67,14 @@ const List<JobOffer> mockJobs = [
     id: 'job_001',
     title: 'Junior Product Manager',
     company: 'Jasa Future Lab',
-    matchPercentage: 96,
+    matchPercentage: 84,
     requiredSkills: ['Коммуникация', 'Аналитика', 'Организация', 'Презентации'],
   ),
   JobOffer(
     id: 'job_002',
     title: 'AI Content Intern',
     company: 'Neuron Stories',
-    matchPercentage: 91,
+    matchPercentage: 76,
     requiredSkills: [
       'Сторителлинг',
       'AI-инструменты',
@@ -86,7 +86,7 @@ const List<JobOffer> mockJobs = [
     id: 'job_003',
     title: 'Operations Assistant',
     company: 'Lift Events',
-    matchPercentage: 88,
+    matchPercentage: 71,
     requiredSkills: [
       'Системность',
       'Дедлайны',
@@ -98,7 +98,7 @@ const List<JobOffer> mockJobs = [
     id: 'job_004',
     title: 'Media Producer Intern',
     company: 'Campus Wave',
-    matchPercentage: 84,
+    matchPercentage: 89,
     requiredSkills: ['Съемка', 'Монтаж', 'Сторителлинг', 'Командная работа'],
   ),
 ];

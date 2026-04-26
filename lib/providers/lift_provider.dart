@@ -126,6 +126,116 @@ class LiftProvider extends ChangeNotifier {
       axisScoresA: {LiftAxes.communication: 1.0, LiftAxes.organization: 0.7},
       axisScoresB: {LiftAxes.organization: 0.8, LiftAxes.technical: 0.8},
     ),
+    const QuestionModel(
+      id: 'q11',
+      questionText:
+          'В новой команде ты скорее быстро познакомишь всех между собой или сразу разложишь роли и дедлайны?',
+      optionA_Text: 'Быстро познакомлю и соберу общий вайб',
+      optionB_Text: 'Сразу разложу роли и дедлайны',
+      tagA: 'Лидерство',
+      tagB: 'Организация',
+      axisScoresA: {LiftAxes.communication: 1.0, LiftAxes.organization: 0.5},
+      axisScoresB: {LiftAxes.organization: 1.1, LiftAxes.logic: 0.5},
+    ),
+    const QuestionModel(
+      id: 'q12',
+      questionText:
+          'Что тебе ближе: придумать механику вирусного челленджа или построить таблицу, которая покажет, где теряется аудитория?',
+      optionA_Text: 'Придумать вирусный челлендж',
+      optionB_Text: 'Построить таблицу и найти узкое место',
+      tagA: 'Креативность',
+      tagB: 'Аналитика',
+      axisScoresA: {LiftAxes.creativity: 1.1, LiftAxes.communication: 0.5},
+      axisScoresB: {LiftAxes.logic: 1.0, LiftAxes.technical: 0.6},
+    ),
+    const QuestionModel(
+      id: 'q13',
+      questionText:
+          'Если младший участник застрял, ты скорее объяснишь ему шаг за шагом или напишешь маленький инструмент для ускорения работы?',
+      optionA_Text: 'Объясню шаг за шагом',
+      optionB_Text: 'Соберу инструмент для ускорения',
+      tagA: 'Наставничество',
+      tagB: 'Автоматизация',
+      axisScoresA: {LiftAxes.communication: 0.9, LiftAxes.organization: 0.4},
+      axisScoresB: {LiftAxes.technical: 1.2, LiftAxes.logic: 0.6},
+    ),
+    const QuestionModel(
+      id: 'q14',
+      questionText:
+          'Что тебе интереснее: договориться с партнером о поддержке проекта или выстроить pipeline, чтобы команда выпускала контент без хаоса?',
+      optionA_Text: 'Договориться с партнером',
+      optionB_Text: 'Выстроить pipeline для команды',
+      tagA: 'Коммуникация',
+      tagB: 'Системность',
+      axisScoresA: {LiftAxes.communication: 1.0, LiftAxes.creativity: 0.4},
+      axisScoresB: {LiftAxes.organization: 1.0, LiftAxes.technical: 0.5},
+    ),
+    const QuestionModel(
+      id: 'q15',
+      questionText:
+          'Что для тебя сильнее драйвит: ночью собрать рабочий MVP или определить 3 метрики, которые докажут жизнеспособность идеи?',
+      optionA_Text: 'Собрать рабочий MVP',
+      optionB_Text: 'Определить ключевые метрики успеха',
+      tagA: 'Прототипирование',
+      tagB: 'Стратегия',
+      axisScoresA: {LiftAxes.technical: 1.1, LiftAxes.logic: 0.5},
+      axisScoresB: {LiftAxes.logic: 1.0, LiftAxes.organization: 0.7},
+    ),
+    const QuestionModel(
+      id: 'q16',
+      questionText:
+          'Перед большим ивентом ты скорее придумаешь яркое открытие или возьмешь на себя координационный штаб и контроль тайминга?',
+      optionA_Text: 'Придумаю яркое открытие',
+      optionB_Text: 'Возьму координацию и тайминг',
+      tagA: 'Сторителлинг',
+      tagB: 'Организация',
+      axisScoresA: {LiftAxes.creativity: 1.0, LiftAxes.communication: 0.6},
+      axisScoresB: {LiftAxes.organization: 1.1, LiftAxes.communication: 0.5},
+    ),
+    const QuestionModel(
+      id: 'q17',
+      questionText:
+          'Во время спора в команде ты скорее поможешь всем услышать друг друга или разобьешь проблему на логические блоки и приоритеты?',
+      optionA_Text: 'Помогу всем услышать друг друга',
+      optionB_Text: 'Разобью проблему на блоки и приоритеты',
+      tagA: 'Медиатор',
+      tagB: 'Логика',
+      axisScoresA: {LiftAxes.communication: 1.0, LiftAxes.organization: 0.5},
+      axisScoresB: {LiftAxes.logic: 1.1, LiftAxes.organization: 0.5},
+    ),
+    const QuestionModel(
+      id: 'q18',
+      questionText:
+          'Что тебе ближе в долгом проекте: развивать сообщество вокруг идеи или строить систему, которая масштабируется без ручного контроля?',
+      optionA_Text: 'Развивать сообщество вокруг идеи',
+      optionB_Text: 'Строить масштабируемую систему',
+      tagA: 'Лидерство',
+      tagB: 'Системность',
+      axisScoresA: {LiftAxes.communication: 0.9, LiftAxes.creativity: 0.5},
+      axisScoresB: {LiftAxes.technical: 0.9, LiftAxes.logic: 0.8},
+    ),
+    const QuestionModel(
+      id: 'q19',
+      questionText:
+          'Если нужно запустить школьную инициативу за неделю, ты скорее сделаешь сильную презентацию для участников или соберешь операционный план по ролям?',
+      optionA_Text: 'Сделаю сильную презентацию и подачу',
+      optionB_Text: 'Соберу операционный план по ролям',
+      tagA: 'Сторителлинг',
+      tagB: 'Дисциплина',
+      axisScoresA: {LiftAxes.creativity: 0.9, LiftAxes.communication: 0.7},
+      axisScoresB: {LiftAxes.organization: 1.0, LiftAxes.logic: 0.6},
+    ),
+    const QuestionModel(
+      id: 'q20',
+      questionText:
+          'Что заряжает сильнее: находить неожиданные концепции для кампании или доводить сложный функционал до стабильного релиза?',
+      optionA_Text: 'Находить неожиданные концепции',
+      optionB_Text: 'Доводить функционал до стабильного релиза',
+      tagA: 'Креативность',
+      tagB: 'Техничность',
+      axisScoresA: {LiftAxes.creativity: 1.1, LiftAxes.communication: 0.4},
+      axisScoresB: {LiftAxes.technical: 1.1, LiftAxes.organization: 0.5},
+    ),
   ];
 
   final List<CertificateModel> _seedCertificates = const [
